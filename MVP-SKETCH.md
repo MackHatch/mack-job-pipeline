@@ -24,18 +24,24 @@ You paste a job URL → n8n fetches the posting → an LLM scores fit against yo
 [Extract text] ── strip nav/boilerplate (simple for MVP)
         │
         ▼
-[LLM: Score fit] ── structured JSON (Zod-equivalent schema)
+[LLM: Score fit] ── structured JSON (often nested under output[].content[].text)
         │
-        ├─ score < threshold ──► Sheet row (skip) + optional notify
+        ▼
+[Code: Parse Fit] ── flatten fitScore, gaps, liveCodingRisk, …
         │
-        ▼ score ≥ threshold
+        ├─ score < 7 ──► Skip draft (optional: still log to Sheet)
+        │
+        ▼ score ≥ 7
 [LLM: Draft package] ── letter + why-me + recruiter blurb
         │
         ▼
-[Write Google Sheet]
+[Code: Parse Draft] ── flatten draft JSON; merge with fit fields
         │
         ▼
-[Email / Slack digest] ── YOU review; nothing auto-applies
+[Google Sheets append] ── status draft_ready
+        │
+        ▼
+[Gmail digest] ── YOU review; nothing auto-applies
 ```
 
 ---
