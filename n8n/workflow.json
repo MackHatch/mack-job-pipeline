@@ -1,0 +1,704 @@
+{
+  "name": "AI Job Application Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Score a job posting",
+        "formDescription": "Paste a job URL. Drafts never auto-apply — you review in Sheets + email.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "jobUrl",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "notes"
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "7eedcb9e-a74d-4974-a6ca-2fdb35125cef",
+      "name": "Job URL Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -1040,
+        304
+      ],
+      "webhookId": "aac5e6cf-9d8f-41b7-beba-05f9e57b8a57"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "runId",
+              "value": "={{ $now.toMillis().toString() }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "jobUrl",
+              "value": "={{ $json.jobUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "notes",
+              "value": "={{ $json.notes || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "receivedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "73e9b6c4-df7c-4b7b-a41f-4cbddb709e19",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -784,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.jobUrl }}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "fb39707f-6cc4-4ecf-b51a-95fdd35025d3",
+      "name": "Fetch Job Posting",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -528,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = typeof $input.first().json.data === 'string' ? $input.first().json.data : ($input.first().json.body || JSON.stringify($input.first().json));\nconst text = html\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .slice(0, 14000);\nconst prev = $('Normalize Input').first().json;\nreturn [{ json: { ...prev, jobText: text } }];"
+      },
+      "id": "c4e5f765-c0d4-4bdf-b869-defca18a0fd1",
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ Number($('Code in JavaScript').item.json.fitScore) }}\n",
+              "operation": "largerEqual",
+              "value2": 7
+            }
+          ]
+        }
+      },
+      "id": "00de3b13-9c2d-4224-a3cb-eeba3df299b9",
+      "name": "Score >= 7?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        512,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "coverLetter",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "whyMeBullets",
+              "value": "={{ [] }}",
+              "type": "array"
+            },
+            {
+              "id": "3",
+              "name": "recruiterMessage",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "resumeHeadline",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "interviewFormatQuestion",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "6",
+              "name": "status",
+              "value": "skipped_low_fit",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "5204c727-1946-41e6-bb37-ce6ba4fa90b6",
+      "name": "Skip Draft (low fit)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        752,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Next: wire credentials\n1. Replace STUB Fit Score + STUB Draft with OpenAI nodes (prompts in /workspace/pipeline/prompts).\n2. Add Google Sheets Append row (headers in docs/sheet-headers.md).\n3. Add Email Send to mack.hatcher1@outlook.com.\n4. Never auto-apply to employers.",
+        "height": 280,
+        "width": 420
+      },
+      "id": "151d51cf-a499-400a-aa91-b8587c8f42e4",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        96,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a careful job-fit analyst for Mackenzie Hatcher, a full-stack developer in Winnipeg, MB.\n\nYou receive a fixed CANDIDATE PROFILE and raw JOB POSTING text (plus optional notes).\n\nRules:\n- Use ONLY the profile + posting (+ notes). Never invent skills, employers, metrics, years, or credentials.\n- Prefer Remote Canada / Manitoba-eligible / Winnipeg. Flag US-only remote as a location risk.\n- Be honest about gaps (cloud, Angular, 8+ years asks, live coding assessments).\n- If the posting mentions live coding, pair programming, CoderPad, HackerRank, LeetCode, or whiteboard coding, set liveCodingRisk to \"likely\". If it clearly describes take-home, portfolio presentation, or discussion-only, use \"unlikely\". Otherwise \"unknown\".\n- fitScore is an integer 1–10 for this candidate. applyPriority is high | medium | low | skip.\n\nReturn ONLY valid JSON with every field:\nfitScore, title, company, location, seniority, stackMatch (array), stackGaps (array), liveCodingRisk (\"unknown\"|\"likely\"|\"unlikely\"), whyFit (2–4 bullets), risks (1–4 bullets), applyPriority, reasoning (2–4 sentences).\n\nScoring: 9–10 strong Canada-hireable .NET+React/Vue+SQL match; 7–8 strong with gaps; 5–6 stretch; 1–4 mismatch → skip.\n"
+            },
+            {
+              "content": "=CANDIDATE PROFILE:\nCandidate profile (feed to LLMs — keep factual)\n\nUse ONLY these facts. Do not invent employers, dates, metrics, skills, or certifications.\n\nIdentity\n\n\n\n\n\nName: Mackenzie Hatcher (Mack)\n\n\n\nTitle target: Full Stack / Senior Software Developer\n\n\n\nLocation: Winnipeg, MB, Canada\n\n\n\nContact: mack.hatcher1@outlook.com | 204-228-3490\n\n\n\nWork auth: Canada\n\n\n\nPreference: Remote Canada (Manitoba-eligible ideal), or Winnipeg hybrid/onsite\n\n\n\nExperience: 6+ years professional software development (do NOT inflate to 8+)\n\nCore stack\n\n\n\n\n\nLanguages: C#, JavaScript, TypeScript, SQL\n\n\n\nFrontend: React, Vue.js, Redux, Vuetify, Tailwind CSS, Bootstrap, HTML/CSS\n\n\n\nBackend: ASP.NET Core, ASP.NET MVC, Entity Framework, Node.js, REST APIs\n\n\n\nData: SQL Server, PostgreSQL, SSMS, SSRS, schema design, query optimization\n\n\n\nTesting: xUnit, Vitest, Jest, Enzyme, Mocha, Selenium WebDriver\n\n\n\nDevOps: Git, GitHub, CI/CD, Docker, IIS, Nginx, Apache, Linux\n\n\n\nAI: OpenAI API, LLM agents, structured outputs, Zod, prompt/context design; AI-assisted coding with human review\n\n\n\nExperience (summary bullets only)\n\n\n\nFull Stack Software Developer — Manitoba Institute of Trades and Technology (MITT), Winnipeg | Feb 2024 – May 2026\n\n\n\n\n\nModernized student/admin apps: C#, ASP.NET MVC, EF, Vue.js, TypeScript, SQL Server, PostgreSQL\n\n\n\nOwned features end-to-end: requirements → design → FE/BE → DB → test → deploy → production support\n\n\n\nREST APIs and third-party integrations\n\n\n\nPayment reconciliation workflows (provider state vs app data; resolve inconsistencies)\n\n\n\nComplex SQL + SSRS for institutional, federal, provincial reporting\n\n\n\nProduction troubleshooting: query performance, duplicates, aggregations, schema/app interactions\n\n\n\nCI/CD deployments; IIS, Nginx, Apache\n\n\n\nFull Stack Developer — InTouchCX, Winnipeg | Mar 2020 – Oct 2023\n\n\n\n\n\nProduction web apps: React, Vue.js, C#, Entity Framework, MVC\n\n\n\nSQL optimization: ~25% reduction in application load times\n\n\n\nAutomated tests (Jest, Enzyme, Mocha): ~30% fewer production bugs\n\n\n\nGit branching strategies and pull requests\n\n\n\nJunior Developer — Sightline Innovation | May 2019 – Nov 2019\n\n\n\n\n\nJavaScript, TypeScript, Python; TDD; responsive migrations; technical research/docs\n\n\n\nSoftware Developer Intern — Bit Space Ltd. | Nov 2018 – Feb 2019\n\n\n\n\n\nC# Unity apps; third-party APIs; Selenium UI tests (~20% reliability improvement claimed on résumé)\n\n\n\nSelected project\n\n\n\nAI Agents and Developer Automation\n\n\n\n\n\nTypeScript, Node.js, OpenAI API, Zod, Vitest\n\n\n\nTask-focused agents: ticket analysis, action plans, meeting-note processing\n\n\n\nStructured outputs with schema validation and automated tests for malformed/edge cases\n\n\n\nEducation\n\n\n\n\n\nDiploma in Software Development — MITT | Feb 2019\n\n\n\nHonest gaps (surface when relevant)\n\n\n\n\n\nNot 8+ years; do not claim Angular production depth\n\n\n\nCloud production (GCP/K8s/Apigee/AWS Lambda) is not a strength vs app-server/CI/Docker/Linux\n\n\n\nDDD/microservices: modular .NET ownership yes; do not claim greenfield distributed-systems leadership\n\n\n\nLive coding under observation is a known interview challenge; day-to-day delivery and debugging are strengths\n\n\n\nVoice\n\n\n\n\n\nCanadian English (en-CA)\n\n\n\nFirst person as Mackenzie when drafting letters\n\n\n\nConfident, concrete, no fluff, no slogans\n\nOPTIONAL NOTES FROM CANDIDATE:\n({{$json.notes}})\n\nJOB POSTING TEXT:\n({{$json.jobText}})"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        -32,
+        304
+      ],
+      "id": "578e056c-480c-4c7a-9b83-66cfab84c6d7",
+      "name": "Fit Score (OpenAI)",
+      "credentials": {
+        "openAiApi": {
+          "id": "7fJATmwKD5NOuix7",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Fit Score (OpenAI)').first().json;\n\nconst out = Array.isArray(item.output) ? item.output[0] : item.output;\n\nconst raw =\n  (typeof out === 'string' ? out : null) ??\n  out?.content?.[0]?.text ??\n  out?.text ??\n  null;\n\nif (typeof raw !== 'string' || !raw.length) {\n  throw new Error(\n    'No text. outType=' +\n      typeof out +\n      ' outKeys=' +\n      Object.keys(out || {}).join(',')\n  );\n}\n\nconst start = raw.indexOf('{');\nconst end = raw.lastIndexOf('}');\nif (start < 0 || end < 0) {\n  throw new Error('No JSON in text: ' + raw.slice(0, 160));\n}\n\nconst fit = JSON.parse(raw.slice(start, end + 1));\n\nif (typeof fit.fitScore !== 'number') {\n  throw new Error('fitScore missing: ' + JSON.stringify(fit).slice(0, 160));\n}\n\nreturn [{\n  json: {\n    fitScore: fit.fitScore,\n    title: fit.title,\n    company: fit.company,\n    location: fit.location,\n    seniority: fit.seniority,\n    stackMatch: fit.stackMatch,\n    stackGaps: fit.stackGaps,\n    liveCodingRisk: fit.liveCodingRisk,\n    whyFit: fit.whyFit,\n    risks: fit.risks,\n    applyPriority: fit.applyPriority,\n    reasoning: fit.reasoning,\n    jobUrl: item.jobUrl,\n    receivedAt: item.receivedAt,\n    probe: 'parsed-ok',\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        304
+      ],
+      "id": "7fd316c1-c08d-499b-aeeb-9ff80774590a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Draft Package').first().json; // ← your draft OpenAI node name\n\nconst out = Array.isArray(item.output) ? item.output[0] : item.output;\nconst raw =\n  (typeof out === 'string' ? out : null) ??\n  out?.content?.[0]?.text ??\n  out?.text ??\n  null;\n\nif (typeof raw !== 'string' || !raw.length) {\n  throw new Error('No draft text. keys=' + Object.keys(item).join(','));\n}\n\nconst start = raw.indexOf('{');\nconst end = raw.lastIndexOf('}');\nconst draft = JSON.parse(raw.slice(start, end + 1));\n\nconst fit = $('Code in JavaScript').first().json; // ← your fit-parse Code node name\n\nreturn [{\n  json: {\n    ...fit,\n    ...draft,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        208
+      ],
+      "id": "2f853077-6249-4420-8c29-1f7375201c31",
+      "name": "Parse Draft JSON"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You write job application materials for Mackenzie Hatcher (Mack), Winnipeg-based full-stack developer.\n\nInputs: CANDIDATE PROFILE, JOB POSTING, FIT ANALYSIS JSON, optional NOTES.\n\nRules:\n- Use ONLY those inputs. Never invent employers, metrics, skills, certifications, or cloud production experience.\n- Do NOT claim 8+ years (use 6+). Do NOT claim deep Angular unless notes say so.\n- Address listed gaps briefly and calmly.\n- Cover letter ~350–500 words, en-CA, first person as Mackenzie, professional letter with date and Re: line.\n- whyMeBullets: 5–7 ATS-ready bullets. recruiterMessage: max 3 lines including email and phone.\n- interviewFormatQuestion: one polite sentence about live coding vs take-home vs discussion/presentation.\n- Mirror honest posting keywords. Drafts are for Mack’s review only — never imply auto-send to employers.\n\nReturn ONLY valid JSON with: resumeHeadline, coverLetter, whyMeBullets (array), recruiterMessage, interviewFormatQuestion.\n"
+            },
+            {
+              "content": "CANDIDATE PROFILE:\n\nFIT ANALYSIS (JSON):\n{{ JSON.stringify($json) }}\n\nOPTIONAL NOTES FROM CANDIDATE:\n{{ $('Normalize Input').item.json.notes || $('Extract Text').item.json.notes || '' }}\n\nJOB POSTING TEXT:\n{{ $('Extract Text').item.json.jobText || $json.jobText || '' }}\n\nDraft the application package. Return JSON only (no markdown fences).\n\nCandidate profile (feed to LLMs — keep factual)\n\nUse ONLY these facts. Do not invent employers, dates, metrics, skills, or certifications.\n\nIdentity\n\n\n\n\n\nName: Mackenzie Hatcher (Mack)\n\n\n\nTitle target: Full Stack / Senior Software Developer\n\n\n\nLocation: Winnipeg, MB, Canada\n\n\n\nContact: mack.hatcher1@outlook.com | 204-228-3490\n\n\n\nWork auth: Canada\n\n\n\nPreference: Remote Canada (Manitoba-eligible ideal), or Winnipeg hybrid/onsite\n\n\n\nExperience: 6+ years professional software development (do NOT inflate to 8+)\n\nCore stack\n\n\n\n\n\nLanguages: C#, JavaScript, TypeScript, SQL\n\n\n\nFrontend: React, Vue.js, Redux, Vuetify, Tailwind CSS, Bootstrap, HTML/CSS\n\n\n\nBackend: ASP.NET Core, ASP.NET MVC, Entity Framework, Node.js, REST APIs\n\n\n\nData: SQL Server, PostgreSQL, SSMS, SSRS, schema design, query optimization\n\n\n\nTesting: xUnit, Vitest, Jest, Enzyme, Mocha, Selenium WebDriver\n\n\n\nDevOps: Git, GitHub, CI/CD, Docker, IIS, Nginx, Apache, Linux\n\n\n\nAI: OpenAI API, LLM agents, structured outputs, Zod, prompt/context design; AI-assisted coding with human review\n\n\n\nExperience (summary bullets only)\n\n\n\nFull Stack Software Developer — Manitoba Institute of Trades and Technology (MITT), Winnipeg | Feb 2024 – May 2026\n\n\n\n\n\nModernized student/admin apps: C#, ASP.NET MVC, EF, Vue.js, TypeScript, SQL Server, PostgreSQL\n\n\n\nOwned features end-to-end: requirements → design → FE/BE → DB → test → deploy → production support\n\n\n\nREST APIs and third-party integrations\n\n\n\nPayment reconciliation workflows (provider state vs app data; resolve inconsistencies)\n\n\n\nComplex SQL + SSRS for institutional, federal, provincial reporting\n\n\n\nProduction troubleshooting: query performance, duplicates, aggregations, schema/app interactions\n\n\n\nCI/CD deployments; IIS, Nginx, Apache\n\n\n\nFull Stack Developer — InTouchCX, Winnipeg | Mar 2020 – Oct 2023\n\n\n\n\n\nProduction web apps: React, Vue.js, C#, Entity Framework, MVC\n\n\n\nSQL optimization: ~25% reduction in application load times\n\n\n\nAutomated tests (Jest, Enzyme, Mocha): ~30% fewer production bugs\n\n\n\nGit branching strategies and pull requests\n\n\n\nJunior Developer — Sightline Innovation | May 2019 – Nov 2019\n\n\n\n\n\nJavaScript, TypeScript, Python; TDD; responsive migrations; technical research/docs\n\n\n\nSoftware Developer Intern — Bit Space Ltd. | Nov 2018 – Feb 2019\n\n\n\n\n\nC# Unity apps; third-party APIs; Selenium UI tests (~20% reliability improvement claimed on résumé)\n\n\n\nSelected project\n\n\n\nAI Agents and Developer Automation\n\n\n\n\n\nTypeScript, Node.js, OpenAI API, Zod, Vitest\n\n\n\nTask-focused agents: ticket analysis, action plans, meeting-note processing\n\n\n\nStructured outputs with schema validation and automated tests for malformed/edge cases\n\n\n\nEducation\n\n\n\n\n\nDiploma in Software Development — MITT | Feb 2019\n\n\n\nHonest gaps (surface when relevant)\n\n\n\n\n\nNot 8+ years; do not claim Angular production depth\n\n\n\nCloud production (GCP/K8s/Apigee/AWS Lambda) is not a strength vs app-server/CI/Docker/Linux\n\n\n\nDDD/microservices: modular .NET ownership yes; do not claim greenfield distributed-systems leadership\n\n\n\nLive coding under observation is a known interview challenge; day-to-day delivery and debugging are strengths\n\n\n\nVoice\n\n\n\n\n\nCanadian English (en-CA)\n\n\n\nFirst person as Mackenzie when drafting letters\n\n\n\nConfident, concrete, no fluff, no slogans\n\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        736,
+        208
+      ],
+      "id": "dba73468-7df1-4381-b467-787546d5fafc",
+      "name": "Draft Package",
+      "credentials": {
+        "openAiApi": {
+          "id": "7fJATmwKD5NOuix7",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1LFwQsHBsJgDGsFkRLH-VAVOFTy0wwouRIxZTh9xbS2Q",
+          "mode": "list",
+          "cachedResultName": "macks-job-pipeline",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1LFwQsHBsJgDGsFkRLH-VAVOFTy0wwouRIxZTh9xbS2Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "applications",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1LFwQsHBsJgDGsFkRLH-VAVOFTy0wwouRIxZTh9xbS2Q/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "draft_ready",
+            "jobUrl": "={{ $('Normalize Input').item.json.jobUrl }}",
+            "title": "={{ $json.title }}",
+            "company": "={{ $json.company }}",
+            "location": "={{ $json.location }}",
+            "fitScore": "={{ $json.fitScore }}",
+            "applyPriority": "={{ $json.applyPriority }}",
+            "liveCodingRisk": "={{ $json.liveCodingRisk }}",
+            "stackMatch": "={{ $json.stackMatch }}",
+            "stackGaps": "={{ $json.stackGaps }}",
+            "whyFit": "={{ $json.whyFit }}",
+            "risks": "={{ $json.risks }}",
+            "resumeHeadline": "={{ $json.resumeHeadline }}",
+            "coverLetter": "={{ $json.coverLetter }}",
+            "whyMeBullets": "={{ $json.whyMeBullets }}",
+            "recruiterMessage": "={{ $json.recruiterMessage }}",
+            "interviewFormatQuestion": "={{ $json.interviewFormatQuestion }}",
+            "receivedAt": "={{ $('Normalize Input').item.json.receivedAt }}",
+            "notes": "={{ $('Normalize Input').item.json.notes }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "receivedAt",
+              "displayName": "receivedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "jobUrl",
+              "displayName": "jobUrl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "location",
+              "displayName": "location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fitScore",
+              "displayName": "fitScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "applyPriority",
+              "displayName": "applyPriority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "liveCodingRisk",
+              "displayName": "liveCodingRisk",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "stackMatch",
+              "displayName": "stackMatch",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "stackGaps",
+              "displayName": "stackGaps",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "whyFit",
+              "displayName": "whyFit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "risks",
+              "displayName": "risks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resumeHeadline",
+              "displayName": "resumeHeadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "coverLetter",
+              "displayName": "coverLetter",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "whyMeBullets",
+              "displayName": "whyMeBullets",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recruiterMessage",
+              "displayName": "recruiterMessage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interviewFormatQuestion",
+              "displayName": "interviewFormatQuestion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1312,
+        208
+      ],
+      "id": "025dd37f-7e5f-4cc7-8c01-fcedfd46c113",
+      "name": "Values to Send",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "nFm9P8PjxJKBsDIk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "slurmsmackenzie204@gmail.com",
+        "subject": "=Job draft: {{ $json.company }} ({{ $json.fitScore }})",
+        "message": "={{ $json.title }} @ {{ $json.company }} Fit: {{ $json.fitScore }} ({{ $json.applyPriority }}) Live coding risk: {{ $json.liveCodingRisk }}  URL: {{ $('Normalize Input').item.json.jobUrl }}  Cover letter preview: {{ $json.coverLetter }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1536,
+        208
+      ],
+      "id": "f239cbbb-413c-45ac-a51d-a4c5dd5aa6e4",
+      "name": "Send a message",
+      "webhookId": "e01990da-9262-4eae-b2bd-795470fd77e0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "R4x1bGX6sIgw62PB",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Job URL Form": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Fetch Job Posting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Job Posting": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Fit Score (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score >= 7?": {
+      "main": [
+        [
+          {
+            "node": "Draft Package",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Draft (low fit)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit Score (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Score >= 7?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Package": {
+      "main": [
+        [
+          {
+            "node": "Parse Draft JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Draft JSON": {
+      "main": [
+        [
+          {
+            "node": "Values to Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Values to Send": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f96c8896-d0a7-4a14-8d37-a48c6ccd5849",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6435cf41cb1319259a44f2f8033ca0e0bd6c269aaae03db1a37730ef2511838e"
+  },
+  "nodeGroups": [],
+  "id": "g3PPqMJso5okOBcg",
+  "tags": [
+    {
+      "updatedAt": "2026-09-28T13:10:23.828Z",
+      "createdAt": "2026-09-28T13:10:23.828Z",
+      "id": "Oy92GUEJ6i4cA3yt",
+      "name": "ai-sdlc"
+    },
+    {
+      "updatedAt": "2026-09-28T13:10:23.813Z",
+      "createdAt": "2026-09-28T13:10:23.813Z",
+      "id": "wrj8CljZelMRM8po",
+      "name": "job-hunt"
+    }
+  ]
+}

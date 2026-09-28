@@ -1,0 +1,5 @@
+{
+  "id": "live-coding-flag",
+  "expect": { "liveCodingRisk": ["likely"] },
+  "jobText": "Full Stack .NET Developer, remote Canada. C#, React, SQL. Interview includes a live CoderPad pair-programming session and a HackerRank screen."
+}

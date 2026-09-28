@@ -1,0 +1,5 @@
+{
+  "id": "bad-fit-java",
+  "expect": { "fitScoreMax": 4, "applyPriority": ["skip", "low"] },
+  "jobText": "Junior Java Spring Boot Developer. On-site Toronto only. 0-2 years. Must have Spring WebFlux and Kafka. No .NET or React."
+}

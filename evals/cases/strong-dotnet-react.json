@@ -1,0 +1,5 @@
+{
+  "id": "strong-dotnet-react",
+  "expect": { "fitScoreMin": 8, "applyPriority": ["high", "medium"], "liveCodingRisk": ["unknown", "unlikely", "likely"] },
+  "jobText": "Senior Software Engineer (C# .NET, React). Remote Canada — Manitoba eligible. Build financial SaaS with C#, ASP.NET, TypeScript, React, SQL Server. 5+ years full-stack. AI-assisted development expected."
+}
