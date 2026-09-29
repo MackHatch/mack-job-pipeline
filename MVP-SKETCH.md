@@ -44,6 +44,8 @@ You paste a job URL → n8n fetches the posting → an LLM scores fit against yo
 [Gmail digest] ── YOU review; nothing auto-applies
 ```
 
+A second workflow, `n8n/digest-workflow.json`, is not on this path. Weekdays at 08:00 and 18:00 America/Winnipeg it reads the sheet and emails rows still marked `draft_ready`. No matches means no email. It does not write the sheet and does not apply. Local Docker n8n has to be running for that cron to fire.
+
 ---
 
 ## n8n node list (build order)
@@ -145,7 +147,8 @@ Run fixtures after any prompt change. Document results in `evals/README.md`.
 ai-job-application-pipeline/
   README.md                 # problem, architecture diagram, demo GIF later
   docs/MVP-SKETCH.md        # this file
-  n8n/workflow.json         # exported workflow
+  n8n/workflow.json         # scoring workflow (Job URL Form)
+  n8n/digest-workflow.json  # weekday draft_ready digest (read-only)
   prompts/fit-scorer.md
   prompts/draft-package.md
   profile/resume-profile.md # sanitized profile fed to LLMs

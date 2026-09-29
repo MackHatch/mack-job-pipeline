@@ -18,7 +18,8 @@ Built as a portfolio / interview story for AI SDLC: structured LLM outputs, eval
 
 ```
 docker-compose.yml          # n8n on http://localhost:5678
-n8n/workflow.json           # exported workflow (re-import after clone)
+n8n/workflow.json           # scoring workflow — Job URL Form (re-import after clone)
+n8n/digest-workflow.json    # weekday draft_ready digest (separate; does not apply)
 profile/resume-profile.md   # locked candidate facts for prompts
 prompts/
   fit-scorer.system.txt
@@ -61,6 +62,24 @@ Open http://localhost:5678 — create the owner account on first launch.
 11. **Gmail** — digest to you for review
 
 Low-fit branch: skip draft (optionally still log to the sheet later).
+
+Open `draft_ready` rows are listed again on a weekday schedule by a **separate** workflow. See [Draft digest (scheduled)](#draft-digest-scheduled).
+
+## Draft digest (scheduled)
+
+Separate workflow from the Job URL Form pipeline. It only **reads** the sheet and emails you. It does not change `status`, it does not call the LLM, and it does not apply to any job.
+
+1. **Import** `n8n/digest-workflow.json` (⋯ → Import from File). Leave `n8n/workflow.json` as the human URL entry path.
+2. Re-select the same **Google Sheets** and **Gmail** credentials if they do not bind on import (exports do not include secrets). The Sheets node uses the same spreadsheet and `applications` tab (`gid=0`) as the scoring workflow. Headers: `docs/sheet-headers.md`.
+3. Gmail **To** is `mack.hatcher1@outlook.com` on **Send Digest**. Change that field if you want a different inbox.
+4. Workflow timezone is **America/Winnipeg** (set in the export). `docker-compose.yml` also sets `GENERIC_TIMEZONE` and `TZ` to that zone.
+5. **Publish** the workflow. It is inactive in the export so it does not fire before credentials are checked. The Schedule Trigger cron is `0 8,18 * * 1-5`: weekdays at **08:00** and **18:00**.
+
+**Keep draft_ready** keeps rows whose `status` is exactly `draft_ready` (case-sensitive, the same value the scoring workflow writes). **Build Digest** turns those rows into one plain-text email: company, title, fitScore, applyPriority, liveCodingRisk, jobUrl, receivedAt, and about the first 200 characters of coverLetter (whitespace collapsed). Higher `fitScore` is listed first.
+
+**No `draft_ready` rows → no email.** The filter emits nothing, so Gmail does not run. An empty Applications tab does the same.
+
+The schedule fires only while local Docker n8n is running. If the laptop is asleep or the container is stopped, that slot is missed — nothing is queued to send later. The same open drafts are listed again at the next run until you change `status` in the sheet (for example to `applied`).
 
 ## Google Cloud OAuth (local Docker)
 
