@@ -1,0 +1,204 @@
+{
+  "name": "Weekday Draft Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Weekday draft digest\nSeparate from the Job URL Form workflow. Read-only: does not change status and does not apply.\n\nSchedule (workflow timezone America/Winnipeg):\ncron `0 8,18 * * 1-5` — weekdays at 08:00 and 18:00.\n\nKeeps rows whose status is exactly `draft_ready`. No matches: no email.\n\nLocal Docker n8n must be running and this workflow published. A slot is missed if the container is stopped.\n\nAfter import, confirm Google Sheets + Gmail credentials. Same spreadsheet / applications tab as the scoring workflow. Gmail To is mack.hatcher1@outlook.com — edit Send Digest if you want another inbox.",
+        "height": 340,
+        "width": 460
+      },
+      "id": "1d5b7e62-3a9c-4e18-8f40-6c2a9d4b7e15",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8,18 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "4c8e1a20-7b3d-4f1e-9a6c-1d2e8f0a3b71",
+      "name": "Weekdays 08:00 and 18:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1LFwQsHBsJgDGsFkRLH-VAVOFTy0wwouRIxZTh9xbS2Q",
+          "mode": "list",
+          "cachedResultName": "macks-job-pipeline",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1LFwQsHBsJgDGsFkRLH-VAVOFTy0wwouRIxZTh9xbS2Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "applications",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1LFwQsHBsJgDGsFkRLH-VAVOFTy0wwouRIxZTh9xbS2Q/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "9b2d6f44-1c8a-4e55-8d7b-0a1c3e5f7d92",
+      "name": "Read Applications",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        520,
+        320
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "nFm9P8PjxJKBsDIk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c3a91e70-4b28-4d6f-9e15-7a2c8f1d4b60",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "draft_ready",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "id": "2e7a9c15-6d4b-4a83-b1f0-8c5d2e6a4b18",
+      "name": "Keep draft_ready",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Read-only digest. Does not update the sheet and does not apply to any job.\n// status must equal \"draft_ready\" exactly (case-sensitive), matching the scoring workflow.\n// Zero matches: return no items so Gmail does not send.\nconst COVER_PREVIEW = 200;\n\nconst rows = $input\n  .all()\n  .map((item) => item.json || {})\n  .filter((row) => row.status === 'draft_ready');\n\nif (rows.length === 0) {\n  return [];\n}\n\nconst scoreOf = (row) => {\n  const n = Number(row.fitScore);\n  return Number.isFinite(n) ? n : -1;\n};\n\nrows.sort((a, b) => {\n  const scoreDiff = scoreOf(b) - scoreOf(a);\n  if (scoreDiff !== 0) return scoreDiff;\n  return String(b.receivedAt || '').localeCompare(String(a.receivedAt || ''));\n});\n\nconst cell = (value) => {\n  if (value === undefined || value === null || String(value).trim() === '') return '(blank)';\n  return String(value).replace(/\\s+/g, ' ').trim();\n};\n\nconst preview = (value) => {\n  const text = cell(value);\n  if (text === '(blank)') return text;\n  if (text.length <= COVER_PREVIEW) return text;\n  return text.slice(0, COVER_PREVIEW).trimEnd() + '…';\n};\n\nconst blocks = rows.map((row, index) => {\n  return [\n    `${index + 1}. ${cell(row.company)} — ${cell(row.title)}`,\n    `   fitScore: ${cell(row.fitScore)}`,\n    `   applyPriority: ${cell(row.applyPriority)}`,\n    `   liveCodingRisk: ${cell(row.liveCodingRisk)}`,\n    `   jobUrl: ${cell(row.jobUrl)}`,\n    `   receivedAt: ${cell(row.receivedAt)}`,\n    `   coverLetter: ${preview(row.coverLetter)}`,\n  ].join('\\n');\n});\n\nconst checkedAt = $now.setZone('America/Winnipeg').toFormat('yyyy-LL-dd HH:mm');\n\nconst body = [\n  `Open drafts waiting: ${rows.length}`,\n  `Checked: ${checkedAt} America/Winnipeg`,\n  'Review in Google Sheets. This digest does not apply to any job.',\n  '',\n  blocks.join('\\n\\n'),\n].join('\\n');\n\nreturn [\n  {\n    json: {\n      count: rows.length,\n      subject: `Draft digest: ${rows.length} open`,\n      body,\n    },\n  },\n];\n"
+      },
+      "id": "6f1c8d33-0a5e-4b72-9c4d-3e8a1b7f5d06",
+      "name": "Build Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "mack.hatcher1@outlook.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "8a4e2b91-5c7d-4f36-a9e0-1b6c8d3f2a47",
+      "name": "Send Digest",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        320
+      ],
+      "webhookId": "5e8c1a74-2d6b-4f90-b3a7-9c1e4d8f2a36",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "R4x1bGX6sIgw62PB",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Weekdays 08:00 and 18:00": {
+      "main": [
+        [
+          {
+            "node": "Read Applications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Applications": {
+      "main": [
+        [
+          {
+            "node": "Keep draft_ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep draft_ready": {
+      "main": [
+        [
+          {
+            "node": "Build Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Digest": {
+      "main": [
+        [
+          {
+            "node": "Send Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Winnipeg",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
